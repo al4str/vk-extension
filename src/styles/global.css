@@ -1,0 +1,85 @@
+body {
+  margin: 0;
+  box-sizing: border-box;
+  overflow-x: hidden;
+  overflow-y: scroll;
+  font-size: 14px;
+  line-height: 1.375;
+  color: #fefefe;
+  background-color: #222222;
+}
+
+#root {
+  min-width: 600px;
+  padding: 16px;
+  box-sizing: border-box;
+}
+
+.btn {
+  display: inline-block;
+  box-sizing: border-box;
+  width: auto;
+  height: auto;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  color: inherit;
+  font: inherit;
+  text-align: inherit;
+  text-decoration: none;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  outline: none;
+  box-shadow: none;
+  cursor: pointer;
+  user-select: none;
+}
+.btn__wrp {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+.btn__icon {
+  display: block;
+  fill: currentColor;
+}
+.btn__label {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.btn__label_multi {
+  overflow: auto;
+  white-space: normal;
+  text-overflow: clip;
+  word-wrap: break-word;
+}
+.btn:focus {
+  outline: 3px auto #6d7b82;
+}
+.btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.input {
+  display: block;
+  box-sizing: border-box;
+  width: auto;
+  height: auto;
+  margin: 0;
+  padding: 0;
+  color: inherit;
+  font: inherit;
+  background-color: transparent;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+}
+.input:focus {
+  outline: 3px auto #6d7b82;
+}

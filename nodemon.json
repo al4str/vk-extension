@@ -1,0 +1,13 @@
+{
+  "signal": "SIGHUP",
+  "env": {
+    "NODE_ENV": "development"
+  },
+  "watch": [
+    "webpack",
+    ".babelrc",
+    ".eslintrc",
+    ".eslintignore"
+  ],
+  "exec": "npx webpack --config ./webpack/webpack.config.dev.js"
+}
