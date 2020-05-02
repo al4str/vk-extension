@@ -7,10 +7,31 @@
 
   const stores = getContext('stores');
   const exp = stores.export;
-  const { startMusicExport } = stores;
+  const { music, startMusicExport } = stores;
+  let url = '';
 
   function handleExportStart() {
     startMusicExport();
+  }
+  function handleDownloadLinkGet() {
+    const header = Object.keys($music.list[0]);
+    const rest = $music.list.map((item) => {
+      return header
+        .map((key) => {
+          const value = item[key];
+          const stringValue = typeof value === 'string'
+            ? value
+            : JSON.stringify(value) || '';
+          if (stringValue.replace(/ /g, '').match(/[\s,"]/)) {
+            return '"' + stringValue.replace(/"/g, '""') + '"';
+          }
+          return stringValue;
+        })
+        .join(',');
+    });
+    const data = [header.join(','), ...rest].join('\n');
+    const blob = new Blob([data], { type: 'text/csv;charset=utf-8;' });
+    url = window.URL.createObjectURL(blob);
   }
 </script>
 
@@ -18,19 +39,21 @@
   <button
     class="btn export__start-btn"
     class:export__start-btn_progress={$exp.readyState === EXPORT_READY_STATE.PROCESSING}
-    disabled={[
+    disabled={!!url || [
       EXPORT_READY_STATE.NOT_READY,
       EXPORT_READY_STATE.PROCESSING,
     ].includes($exp.readyState)}
     type="button"
-    on:click={handleExportStart}
+    on:click={$exp.readyState === EXPORT_READY_STATE.FINISHED
+      ? handleDownloadLinkGet
+      : handleExportStart}
   >
     <span class="btn__wrp">
       <span class="btn__label">
         {#if $exp.readyState === EXPORT_READY_STATE.PROCESSING}
         Processing ({$exp.progress}%)
         {:else if $exp.readyState === EXPORT_READY_STATE.FINISHED}
-        Start again
+        Get download link
         {:else}
         Start
         {/if}
@@ -53,7 +76,18 @@
       {$exp.item}
     </span>
     {:else if $exp.readyState === EXPORT_READY_STATE.FINISHED}
-    Main playlist export finished
+    <span class="export__item">
+      Main playlist export finished
+      {#if url}
+        <a
+          class="export__link"
+          href={url}
+          download="vk-main-playlist.csv"
+        >
+          Download <code>.csv</code> file
+        </a>
+      {/if}
+    </span>
     {/if}
   </p>
 </div>
@@ -99,5 +133,11 @@
     text-overflow: ellipsis;
     text-align: center;
     white-space: nowrap;
+  }
+  .export__link {
+    display: block;
+    color: inherit;
+    text-decoration: underline;
+    line-height: 1.5;
   }
 </style>

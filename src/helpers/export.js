@@ -10,7 +10,7 @@ export async function startExport(options) {
     list = [],
     onProcess = Function.prototype,
   } = options || {};
-  const exportGenerator = exportList(list.slice(0, 1234));
+  const exportGenerator = exportList(list);
   // eslint-disable-next-line no-restricted-syntax
   for await (const itemProgress of exportGenerator) {
     onProcess(itemProgress.item, itemProgress.progress);
