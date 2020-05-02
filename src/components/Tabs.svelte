@@ -46,6 +46,7 @@
       <button
         class="btn tabs__tab-btn"
         class:tabs__tab-btn_selected={tab.selected}
+        disabled={tab.selected}
         type="button"
         on:click={tab.onSelect}
       >
@@ -68,7 +69,11 @@
 </div>
 
 <style global>
-  .tabs {}
+  .tabs {
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1;
+  }
   .tabs__list {
     display: flex;
     box-sizing: border-box;
@@ -92,6 +97,7 @@
   .tabs__tab-btn_selected {
     color: #ffffff;
     background-color: #ffffff0a;
+    opacity: 1;
     pointer-events: none;
   }
 </style>

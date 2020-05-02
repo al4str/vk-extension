@@ -1,7 +1,7 @@
 {
   "name": "@media/vk-extension",
   "version": "1.0.0",
-  "description": "VK extension for syncing user's audio tracks",
+  "description": "VK Extension helps exporting your precious tracks and playlists",
   "author": "al4str",
   "license": "MIT",
   "scripts": {

@@ -21,6 +21,10 @@ import {
   getListFromStorage,
   setListToStorage,
 } from '~/src/helpers/list';
+import {
+  EXPORT_READY_STATE,
+  startExport,
+} from '~/src/helpers/export';
 
 function updater(update, key, value) {
   update((prevState) => {
@@ -53,6 +57,14 @@ const ROOT_STATE = {
   errors: [],
 };
 const rootStore = writable(ROOT_STATE);
+
+const EXPORT_STATE = {
+  readyState: EXPORT_READY_STATE.INITIAL,
+  progress: 0,
+  item: null,
+};
+const exportStore = writable(EXPORT_STATE);
+const exportSet = updater.bind(null, exportStore.update);
 
 async function init() {
   try {
@@ -158,17 +170,28 @@ async function obtainMusicList() {
     addError(err);
   }
 }
-function addMusicListPage(page) {
-  const { update } = musicStore;
-  update((prevState) => {
-    return {
-      ...prevState,
-      list: prevState.list.concat(page),
-    };
+async function startMusicExport() {
+  const { list } = get(musicStore);
+  if (!list.length) {
+    exportSet('readyState', EXPORT_READY_STATE.NOT_READY);
+    return;
+  }
+  exportSet('readyState', EXPORT_READY_STATE.PROCESSING);
+  await startExport({
+    list,
+    onProcess(item, progress) {
+      if (progress === 100) {
+        exportSet('readyState', EXPORT_READY_STATE.FINISHED);
+        exportSet('progress', 0);
+        exportSet('item', null);
+        return;
+      }
+      exportSet('progress', progress);
+      exportSet('item', item
+        ? item.fullTitle
+        : 'Unknown');
+    },
   });
-}
-function setMusicOwnerId(nextOwnerId) {
-  musicSet('ownerId', nextOwnerId);
 }
 function addError(err) {
   const { update } = rootStore;
@@ -185,15 +208,29 @@ function addError(err) {
     };
   });
 }
+function addMusicListPage(page) {
+  const { update } = musicStore;
+  update((prevState) => {
+    return {
+      ...prevState,
+      list: prevState.list.concat(page),
+    };
+  });
+}
+function setMusicOwnerId(nextOwnerId) {
+  musicSet('ownerId', nextOwnerId);
+}
 
 export function getStores() {
   return {
     root: rootStore,
     user: userStore,
     music: musicStore,
+    export: exportStore,
     init,
     reTry,
     obtainMusicList,
     setMusicOwnerId,
+    startMusicExport,
   };
 }

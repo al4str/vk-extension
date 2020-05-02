@@ -23,7 +23,11 @@ body::-webkit-scrollbar-thumb {
   border-radius: 6px;
 }
 
-#root {}
+#root {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
 
 .btn {
   display: inline-block;
