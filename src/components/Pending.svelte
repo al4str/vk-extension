@@ -1,10 +1,11 @@
 <script>
+  export let className = '';
   export let theme = 'light';
   export let finished = false;
 </script>
 
 <span
-  class="pending {$$restProps.class || ''}"
+  class="pending {className}"
   class:pending_light={theme === 'light'}
   class:pending_dark={theme === 'dark'}
   class:pending_finished={finished}

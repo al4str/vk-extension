@@ -4,6 +4,8 @@
   import Button from '~/src/components/Button.svelte';
   import Cover from '~/src/components/Cover.svelte';
 
+  export let className = '';
+
   const stores = getContext('stores');
   const { player } = stores;
 
@@ -49,16 +51,16 @@
   })
 </script>
 
-<div class="player {$$restProps.class || ''}">
+<div class="player {className}">
   <div class="player__wrp">
     <Button
-      class="player__btn player__btn_prev"
+      className="player__btn player__btn_prev"
       disabled={!$player.track || !$player.prevTrack}
       label="Prev"
       onClick={stores.playPrevTrack}
     />
     <Button
-      class="player__btn player__btn_play"
+      className="player__btn player__btn_play"
       disabled={!$player.track}
       label={$player.isPlaying
         ? 'Pause'
@@ -66,14 +68,14 @@
       onClick={stores.toggleCurrentTrack}
     />
     <Button
-      class="player__btn player__btn_next"
+      className="player__btn player__btn_next"
       disabled={!$player.track || !$player.nextTrack}
       label="Next"
       onClick={stores.playNextTrack}
     />
     {#if $player.track}
       <Cover
-        class="player__cover"
+        className="player__cover"
         src={$player.track.coverUrlSmall}
         alt={$player.track.fullTitle}
       />

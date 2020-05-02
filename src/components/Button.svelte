@@ -1,4 +1,5 @@
 <script>
+  export let className = '';
   export let type = 'button';
   export let disabled = false;
   export let multiline = false;
@@ -9,7 +10,7 @@
 </script>
 
 <button
-  class="btn {$$restProps.class || ''}"
+  class="btn {className}"
   type={type}
   disabled={disabled}
   on:click={onClick}

@@ -1,6 +1,7 @@
 <script>
   import Pending from '~/src/components/Pending.svelte';
 
+  export let className = '';
   export let src = '';
   export let sources = [];
   export let alt = '';
@@ -29,7 +30,7 @@
 </script>
 
 <div
-  class="{$$restProps.class || ''}"
+  class="{className}"
   class:image_loaded={loaded || failed}
 >
   <picture>
@@ -62,7 +63,7 @@
     {/each}
   </picture>
   <Pending
-    class="image__pending"
+    className="image__pending"
     finished={loaded || failed}
     {theme}
   />

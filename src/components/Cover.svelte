@@ -1,14 +1,15 @@
 <script>
   import Image from '~/src/components/Image.svelte';
 
+  export let className = '';
   export let src = '';
   export let alt = '';
 </script>
 
-<span class="cover {$$restProps.class || ''}">
+<span class="cover {className}">
   {#if src}
     <Image
-      class="cover__img"
+      className="cover__img"
       src={src}
       alt={alt}
     />
@@ -37,7 +38,7 @@
     align-items: center;
     text-align: center;
     text-transform: uppercase;
-    color: #999999;
-    background-color: #383838;
+    color: #ffffff3f;
+    background-color: #ffffff0f;
   }
 </style>

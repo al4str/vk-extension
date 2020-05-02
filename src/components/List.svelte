@@ -3,15 +3,18 @@
   import { LIST_READY_STATE } from '~/src/helpers/list';
   import Track from '~/src/components/Playlist/Track.svelte';
 
+  export let className = '';
+
   const stores = getContext('stores');
-  const { music, tracks } = stores;
+  const { music } = stores;
 
   let offset = 0;
   let limit = 20;
   let observer = null;
   let observingEl = null;
+  let limitedTracks = [];
 
-  $: limitedTracks = $tracks.slice(0, offset);
+  $: limitedTracks = $music.list.slice(0, offset);
 
   function handleUserIdChange(e) {
     const { target: { value } } = e;
@@ -41,7 +44,7 @@
   });
 </script>
 
-<div class="list {$$restProps.class || ''}">
+<div class="list {className}">
   {#if $music.readyState === LIST_READY_STATE.INITIAL}
     <p class="list__state">
       List initializing
@@ -57,7 +60,9 @@
   {:else}
     <div class="list__actions">
       <label class="list__owner-wrp">
-        Music owner ID&nbsp;
+        <span class="list__owner-label">
+          Music owner ID
+        </span>
         <input
           class="input list__owner-field"
           value={$music.ownerId}
@@ -73,7 +78,7 @@
       </button>
     </div>
     <ul class="list__list">
-      {#each limitedTracks as track, index}
+      {#each limitedTracks as track, index (track.id)}
         <li class="list__item">
           <Track
             index={index}
@@ -87,7 +92,9 @@
 </div>
 
 <style global>
-  .list {}
+  .list {
+    padding: 0 16px 32px;
+  }
   .list__state {
     margin: 0;
   }
@@ -100,12 +107,26 @@
     display: block;
     margin-right: 12px;
   }
+  .list__owner-label {
+    display: block;
+  }
   .list__owner-field {
-    display: inline-block;
-    opacity: 0.75;
+    display: block;
+    color: #ffffffbe;
+    transition: color 0.15s;
+  }
+  .list__owner-field:hover,
+  .list__owner-field:focus {
+    color: #ffffff;
   }
   .list__refresh-btn {
     margin-left: auto;
+    padding: 8px 12px;
+    background-color: #ffffff0a;
+    transition: background-color 0.15s;
+  }
+  .list__refresh-btn:hover {
+    background-color: #ffffff0f;
   }
   .list__list {
     margin: 0;
