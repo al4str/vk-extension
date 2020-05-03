@@ -1,3 +1,6 @@
+import { createTrack } from '~/src/helpers/library';
+import { WHITELISTED_AUDIO_FIELDS } from '~/src/helpers/audio';
+
 export const EXPORT_READY_STATE = {
   INITIAL: 'INITIAL',
   NOT_READY: 'NOT_READY',
@@ -26,12 +29,20 @@ async function* exportList(list) {
     };
   }
   while (index <= list.length - 1) {
+    const item = list[index];
+    const progress = Math.round(((index + 1) * 100) / list.length);
     yield {
-      item: list[index],
-      progress: Math.round(((index + 1) * 100) / list.length),
+      item,
+      progress,
     };
-    // eslint-disable-next-line no-await-in-loop
-    await sleep();
+    try {
+      const track = getTrackFromItem(item);
+      // eslint-disable-next-line no-await-in-loop
+      await createTrack(track);
+    }
+    catch (err) {
+      console.error(err);
+    }
     index += 1;
   }
   return {
@@ -40,8 +51,12 @@ async function* exportList(list) {
   };
 }
 
-function sleep() {
-  return new Promise((resolve) => {
-    setTimeout(resolve, 50);
-  });
+function getTrackFromItem(item) {
+  return WHITELISTED_AUDIO_FIELDS.reduce((result, key) => {
+    const value = item[key];
+    if (value !== undefined) {
+      result[key] = value;
+    }
+    return result;
+  }, {});
 }

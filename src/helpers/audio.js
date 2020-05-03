@@ -37,6 +37,22 @@ const CONSTANTS = {
   EXPLICIT_BIT: 1024,
 };
 
+export const WHITELISTED_AUDIO_FIELDS = [
+  'id',
+  'ownerId',
+  'fullId',
+  'isClaimed',
+  'isUMA',
+  'fullTitle',
+  'title',
+  'allPerformers',
+  'performer',
+  'duration',
+  'coverUrlSmall',
+  'coverUrlBig',
+  'tokenForEncodedURL',
+];
+
 export function getDirectAudioURL(options) {
   const {
     userId,
@@ -112,7 +128,7 @@ export function mapAudioData(rawData) {
   const extra = rawData[CONSTANTS.INDEX_EXTRA];
   const accessKey = rawData[CONSTANTS.ACCESS_KEY];
   // eslint-disable-next-line no-bitwise
-  const isLongPerformer = flags & CONSTANTS.LONG_PERFORMER_BIT;
+  const isLongPerformer = !!(flags & CONSTANTS.LONG_PERFORMER_BIT);
   // eslint-disable-next-line no-bitwise
   const canAdd = !!(flags & CONSTANTS.CAN_ADD_BIT);
   // eslint-disable-next-line no-bitwise
@@ -151,8 +167,8 @@ export function mapAudioData(rawData) {
   ] = hashes;
   const tokenForEncodedURL = `${fullId}_${actionHash}_${urlHash}`;
   return {
-    id,
-    ownerId,
+    id: id.toString(),
+    ownerId: ownerId.toString(),
     title,
     performer,
     subTitle,
@@ -172,8 +188,8 @@ export function mapAudioData(rawData) {
     isExplicit,
     isUMA,
     isReplaceable,
+    hasAlbum: album,
     ads,
-    album,
     albumId,
     albumPart,
     trackCode,
@@ -319,4 +335,39 @@ export async function* fetchAudioList(options) {
     yield page;
   }
   return list;
+}
+
+export function getCSVAudioList(list) {
+  const firstItem = list.length > 0 && list[0];
+  const header = getCSVAudioHeader(firstItem);
+  const headerString = header.join(',');
+  const dataStrings = list.map((item) => getCSVAudioItem(item, header));
+  return [headerString, ...dataStrings].join('\n');
+}
+
+export function getCSVAudioHeader(item) {
+  if (!item || typeof item !== 'object') {
+    return [];
+  }
+  return Object
+    .keys(item)
+    .filter((key) => WHITELISTED_AUDIO_FIELDS.includes(key))
+    .sort((a, b) => {
+      return WHITELISTED_AUDIO_FIELDS.indexOf(a) - WHITELISTED_AUDIO_FIELDS.indexOf(b);
+    });
+}
+
+export function getCSVAudioItem(item, header) {
+  return header
+    .map((key) => {
+      const value = item[key];
+      const stringValue = typeof value === 'string'
+        ? value
+        : JSON.stringify(value) || '';
+      if (stringValue.replace(/ /g, '').match(/[\s,"]/)) {
+        return `"${stringValue.replace(/"/g, '""')}"`;
+      }
+      return stringValue;
+    })
+    .join(',');
 }

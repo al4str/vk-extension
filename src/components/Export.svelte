@@ -1,6 +1,7 @@
 <script>
   import { getContext } from 'svelte';
   import { EXPORT_READY_STATE } from '~/src/helpers/export';
+  import { getCSVAudioList } from '~/src/helpers/audio';
   import Pending from '~/src/components/Pending.svelte';
 
   export let className = '';
@@ -14,22 +15,7 @@
     startMusicExport();
   }
   function handleDownloadLinkGet() {
-    const header = Object.keys($music.list[0]);
-    const rest = $music.list.map((item) => {
-      return header
-        .map((key) => {
-          const value = item[key];
-          const stringValue = typeof value === 'string'
-            ? value
-            : JSON.stringify(value) || '';
-          if (stringValue.replace(/ /g, '').match(/[\s,"]/)) {
-            return '"' + stringValue.replace(/"/g, '""') + '"';
-          }
-          return stringValue;
-        })
-        .join(',');
-    });
-    const data = [header.join(','), ...rest].join('\n');
+    const data = getCSVAudioList($music.list);
     const blob = new Blob([data], { type: 'text/csv;charset=utf-8;' });
     url = window.URL.createObjectURL(blob);
   }
@@ -53,7 +39,7 @@
         {#if $exp.readyState === EXPORT_READY_STATE.PROCESSING}
         Processing ({$exp.progress}%)
         {:else if $exp.readyState === EXPORT_READY_STATE.FINISHED}
-        Get download link
+        Get <code>.csv</code> file download link
         {:else}
         Start
         {/if}

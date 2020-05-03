@@ -20,6 +20,7 @@ import {
   LIST_READY_STATE,
   getListFromStorage,
   setListToStorage,
+  deleteListFromStorage,
 } from '~/src/helpers/list';
 import {
   EXPORT_READY_STATE,
@@ -125,7 +126,7 @@ async function obtainUserData() {
     addError(err);
   }
 }
-async function obtainMusicList() {
+async function obtainMusicList(forceRefresh = false) {
   try {
     const { id, cookieValue, cookieExpirationDate } = get(userStore);
     let { ownerId } = get(musicStore);
@@ -142,12 +143,17 @@ async function obtainMusicList() {
       musicSet('readyState', LIST_READY_STATE.EXPIRED);
       return;
     }
-    musicSet('readyState', LIST_READY_STATE.STORAGE);
-    const storageList = await getListFromStorage(ownerId);
-    if (storageList) {
-      musicSet('list', storageList);
-      musicSet('readyState', LIST_READY_STATE.READY);
-      return;
+    if (forceRefresh) {
+      await deleteListFromStorage(ownerId);
+    }
+    else {
+      musicSet('readyState', LIST_READY_STATE.STORAGE);
+      const storageList = await getListFromStorage(ownerId);
+      if (storageList) {
+        musicSet('list', storageList);
+        musicSet('readyState', LIST_READY_STATE.READY);
+        return;
+      }
     }
     musicSet('readyState', LIST_READY_STATE.FETCH);
     const pageGenerator = fetchAudioList({

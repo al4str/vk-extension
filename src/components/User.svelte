@@ -63,7 +63,7 @@
     type="button"
     on:click={handleReTry}
   >
-    Reload
+    Retry
   </button>
 </div>
 
@@ -89,6 +89,7 @@
     color: #ffffffbe;
   }
   .user__retry-btn {
+    flex-shrink: 0;
     margin-left: auto;
     padding: 8px 12px;
     background-color: #ffffff0a;

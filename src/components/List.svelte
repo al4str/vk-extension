@@ -5,29 +5,30 @@
 
   export let className = '';
 
+  const LIMIT = 20;
   const stores = getContext('stores');
   const { music } = stores;
 
   let offset = 0;
-  let limit = 20;
+  let length = LIMIT;
   let observer = null;
   let observingEl = null;
   let limitedTracks = [];
 
-  $: limitedTracks = $music.list.slice(0, offset);
+  $: limitedTracks = $music.list.slice(offset, length);
 
   function handleUserIdChange(e) {
     const { target: { value } } = e;
     stores.setMusicOwnerId(value);
   }
   function handleListRefresh() {
-    stores.obtainMusicList();
+    stores.obtainMusicList(true);
   }
 
   onMount(() => {
     observer = new IntersectionObserver(([entry]) => {
       if (entry && entry.isIntersecting) {
-        offset += limit;
+        length += LIMIT;
       }
     });
   });
@@ -46,61 +47,76 @@
 
 <div class="list {className}">
   {#if $music.readyState === LIST_READY_STATE.INITIAL}
-    <p class="list__state">
-      List initializing
-    </p>
+  <p class="list__state">
+    List initializing..
+  </p>
   {:else if $music.readyState === LIST_READY_STATE.STORAGE}
-    <p class="list__state">
-      Getting list from storage
-    </p>
+  <p class="list__state">
+    Getting list from storage..
+  </p>
   {:else if $music.readyState === LIST_READY_STATE.FETCH}
-    <p class="list__state">
-      Loading list
-    </p>
+  <p class="list__state">
+    Loading list..
+  </p>
+  {:else if $music.readyState === LIST_READY_STATE.NO_USER}
+  <p class="list__state">
+    No user to show music tracks from
+  </p>
+  {:else if $music.readyState === LIST_READY_STATE.READY && $music.list.length === 0}
+  <p class="list__state">
+    No tracks found
+  </p>
   {:else}
-    <div class="list__actions">
-      <label class="list__owner-wrp">
-        <span class="list__owner-label">
-          Music owner ID
-        </span>
-        <input
-          class="input list__owner-field"
-          value={$music.ownerId}
-          on:input={handleUserIdChange}
+  <div class="list__actions">
+    <label class="list__owner-wrp">
+      <span class="list__owner-label">
+        Music owner ID
+      </span>
+      <input
+        class="input list__owner-field"
+        placeholder="Please, enter user ID"
+        value={$music.ownerId}
+        on:input={handleUserIdChange}
+      />
+    </label>
+    {#if $music.readyState === LIST_READY_STATE.READY}
+    <button
+      class="btn list__refresh-btn"
+      type="button"
+      on:click={handleListRefresh}
+    >
+      Refresh
+    </button>
+    {/if}
+  </div>
+  <ul class="list__list">
+    {#each limitedTracks as track, index (track.id)}
+      <li class="list__item">
+        <Track
+          index={index}
+          track={track}
         />
-      </label>
-      <button
-        class="btn list__refresh-btn"
-        type="button"
-        on:click={handleListRefresh}
-      >
-        Refresh
-      </button>
-    </div>
-    <ul class="list__list">
-      {#each limitedTracks as track, index (track.id)}
-        <li class="list__item">
-          <Track
-            index={index}
-            track={track}
-          />
-        </li>
-      {/each}
-    </ul>
-    <span bind:this={observingEl} />
+      </li>
+    {/each}
+  </ul>
+  <span bind:this={observingEl} />
   {/if}
 </div>
 
 <style global>
   .list {
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1;
     padding: 0 16px 32px;
   }
   .list__state {
-    margin: 0;
+    margin: auto;
   }
   .list__actions {
     display: flex;
     align-items: center;
+    margin-top: auto;
     margin-bottom: 12px;
   }
   .list__owner-wrp {

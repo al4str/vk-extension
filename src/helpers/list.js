@@ -1,4 +1,4 @@
-import { storageGet, storageSet } from '~/src/helpers/storage';
+import { storageGet, storageSet, storageDelete } from '~/src/helpers/storage';
 
 const STORAGE_KEY_PREFIX = 'LIST_DATA';
 
@@ -29,6 +29,19 @@ export function setListToStorage(ownerId, list) {
   return new Promise((resolve, reject) => {
     const key = `${STORAGE_KEY_PREFIX}_${ownerId}`;
     storageSet(key, list)
+      .then(() => {
+        resolve();
+      })
+      .catch((err) => {
+        reject(err);
+      });
+  });
+}
+
+export function deleteListFromStorage(ownerId) {
+  return new Promise((resolve, reject) => {
+    const key = `${STORAGE_KEY_PREFIX}_${ownerId}`;
+    storageDelete(key)
       .then(() => {
         resolve();
       })
