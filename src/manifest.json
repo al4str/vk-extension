@@ -15,7 +15,8 @@
     "cookies",
     "tabs",
     "activeTab",
-    "storage"
+    "storage",
+    "downloads"
   ],
   "optional_permissions": [
     "notifications"

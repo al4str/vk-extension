@@ -26,15 +26,18 @@ import {
   EXPORT_READY_STATE,
   startExport,
 } from '~/src/helpers/export';
+import {
+  DOWNLOAD_BULK_READY_STATE,
+  startBulkDownload,
+} from '~/src/helpers/download';
 
 function updater(update, key, value) {
-  update((prevState) => {
-    const nextState = {
-      ...prevState,
-      [key]: value,
-    };
-    return nextState;
-  });
+  update((prevState) => ({
+    ...prevState,
+    [key]: typeof value === 'function'
+      ? value(prevState[key])
+      : value,
+  }));
 }
 
 const USER_STATE = {
@@ -66,6 +69,15 @@ const EXPORT_STATE = {
 };
 const exportStore = writable(EXPORT_STATE);
 const exportSet = updater.bind(null, exportStore.update);
+
+const DOWNLOAD_STATE = {
+  readyState: DOWNLOAD_BULK_READY_STATE.INITIAL,
+  progress: 0,
+  item: '',
+  failedList: [],
+};
+const downloadStore = writable(DOWNLOAD_STATE);
+const downloadSet = updater.bind(null, downloadStore.update);
 
 async function init() {
   try {
@@ -199,6 +211,37 @@ async function startMusicExport() {
     },
   });
 }
+async function startMusicDownload() {
+  const { id, cookieValue } = get(userStore);
+  const { list } = get(musicStore);
+  if (!id || !cookieValue || !list.length) {
+    downloadSet('readyState', DOWNLOAD_BULK_READY_STATE.NOT_READY);
+    return;
+  }
+  downloadSet('failedList', []);
+  downloadSet('readyState', DOWNLOAD_BULK_READY_STATE.DOWNLOADING);
+  await startBulkDownload({
+    list,
+    userId: id,
+    cookie: cookieValue,
+    onFail(item, error) {
+      downloadSet('failedList', (prevFailedList) => prevFailedList.concat([item]));
+      console.error(error, item);
+    },
+    onProgress(item, progress) {
+      if (progress === 100) {
+        downloadSet('readyState', DOWNLOAD_BULK_READY_STATE.FINISHED);
+        downloadSet('progress', 0);
+        downloadSet('item', '');
+        return;
+      }
+      downloadSet('progress', progress);
+      downloadSet('item', item
+        ? item.fullTitle
+        : 'Unknown');
+    },
+  });
+}
 function addError(err) {
   const { update } = rootStore;
   const timestamp = Date.now();
@@ -233,10 +276,12 @@ export function getStores() {
     user: userStore,
     music: musicStore,
     export: exportStore,
+    download: downloadStore,
     init,
     reTry,
     obtainMusicList,
     setMusicOwnerId,
     startMusicExport,
+    startMusicDownload,
   };
 }
