@@ -1,157 +1,410 @@
-import ID3Writer from 'browser-id3-writer';
-import { fetch } from '~/src/libs/fetch';
-import {
-  WHITELISTED_AUDIO_FIELDS,
-  getDirectAudiosURL,
-} from '~/src/helpers/audio';
+/* eslint-disable no-await-in-loop */
+import { getSanitizedFileName } from '~/src/libs/filename';
+import { storageSet, storageGet, storageDelete } from '~/src/helpers/storage';
+import { AUDIO_DIR_NAME, getDirectAudiosURL } from '~/src/helpers/audio';
+import { toggleDownloadShelve, isFileAlreadyDownloaded } from '~/src/helpers/downloader';
+import { downloadTracksWithID3Tags } from '~/src/helpers/id3tags.pool';
+
+const ALREADY_DOWNLOADED_CACHE_KEY = 'ALREADY_DOWNLOADED';
+
+const OBTAINING_URL_CHUNK_SIZE = 3; // 10
 
 export const DOWNLOAD_BULK_READY_STATE = {
   INITIAL: 'INITIAL',
   NOT_READY: 'NOT_READY',
+  FILTERING: 'FILTERING',
+  OBTAINING_URL: 'OBTAINING_URL',
   DOWNLOADING: 'DOWNLOADING',
   FINISHED: 'FINISHED',
+  PAUSED: 'PAUSED',
+  STOPPED: 'STOPPED',
 };
 
+/**
+ * @typedef {Object} State
+ * @property {string} userId
+ * @property {string} cookie
+ * @property {Map<string, Track>} tracksMap
+ * @property {Array<string>} filteringQueue
+ * @property {Array<string>} obtainingURLQueue
+ * @property {Array<string>} downloadingQueue
+ * @property {Set<string>} finished
+ * @property {Set<string>} failed
+ * @property {Map<string, string>} directURLMap
+ * @property {Map<string, string>} errorsMap
+ * */
+
+/**
+ * @typedef {Function} OnStop
+ * @return {void}
+ * */
+
+/**
+ * @typedef {Object} OnProgressState
+ * @property {number} progress
+ * @property {string} readyState
+ * @property {Array<Track>} [track]
+ * @property {Set<string>} [finished]
+ * @property {Set<string>} [failed]
+ * @property {Map<string, string>} [errorsMap]
+ * @property {OnStop} [handleStop]
+ * */
+
+/**
+ * @typedef {Object} Track
+ * @property {string} id - ID
+ * @property {boolean} [isClaimed] - Claimed
+ * @property {boolean} [isUMA] - United Music Agency
+ * @property {string} title - Title
+ * @property {string} allPerformers - Comma separated performers
+ * @property {string} fullTitle - Track performer and title
+ * @property {string} coverUrlBig - Cover image URL
+ * @property {string} tokenForEncodedURL
+ * */
+
+/**
+ * @typedef {Function} OnReadyStateChange
+ * @param {string} readyState
+ * @return {void}
+ * */
+
+/**
+ * @typedef {Function} OnProgressChange
+ * @param {number} progress
+ * @return {void}
+ * */
+
+/**
+ * @typedef {Function} OnTrackProcess
+ * @param {Array<Track>} tracks
+ * @return {void}
+ * */
+
+/**
+ * @typedef {Function} OnFinished
+ * @param {Array<string>} failed
+ * @param {Array<string>} finished
+ * @return {void}
+ * */
+
+/**
+ * @typedef {Function} OnStart
+ * @param {Array<string>} trackIds
+ * @return {void}
+ * */
+
+/**
+ * @typedef {Function} OnEnd
+ * @param {Array<string>} trackIds
+ * @return {void}
+ * */
+
+/**
+ * Starts bulk audio download
+ * @param {Object} options
+ * @param {Array<Track>} options.list
+ * @param {string} options.userId
+ * @param {string} options.cookie
+ * @param {OnReadyStateChange} options.onReadyStateChange
+ * @param {OnProgressChange} options.onProgressChange
+ * @param {OnTrackProcess} options.onTrackProcess
+ * @param {OnFinished} options.onFinished
+ * @return {Promise<void>}
+ * */
 export async function startBulkDownload(options) {
   const {
-    list = [],
-    userId = '',
-    cookie = '',
-    onFail = Function.prototype,
-    onProgress = Function.prototype,
-  } = options || {};
-  const bulkDownloadGenerator = bulkDownload({
     list,
+    userId,
+    cookie,
+    onReadyStateChange,
+    onProgressChange,
+    onTrackProcess,
+    onFinished,
+  } = options || {};
+  const state = getInitialState({
     userId,
     cookie,
   });
-  // eslint-disable-next-line no-restricted-syntax
-  for await (const yielded of bulkDownloadGenerator) {
-    if (yielded.error) {
-      onFail(yielded.item, yielded.error);
-    }
-    else {
-      onProgress(yielded.item, yielded.progress);
-    }
+  if (!list || !list.length || !userId || !cookie) {
+    onReadyStateChange(DOWNLOAD_BULK_READY_STATE.NOT_READY);
+    return;
   }
+  onProgressChange(0);
+  onReadyStateChange(DOWNLOAD_BULK_READY_STATE.FILTERING);
+  const preFiltered = list
+    .filter((track) => {
+      if (track.isClaimed) {
+        state.failed.add(track.id);
+        state.errorsMap.set(track.id, 'Claimed');
+        return false;
+      }
+      if (track.isUMA) {
+        state.failed.add(track.id);
+        state.errorsMap.set(track.id, 'United Music Agency');
+        return false;
+      }
+      return true;
+    })
+    .map((track) => ({
+      id: track.id,
+      title: track.title,
+      allPerformers: track.allPerformers,
+      fullTitle: track.fullTitle,
+      coverUrlBig: track.coverUrlBig,
+      tokenForEncodedURL: track.tokenForEncodedURL,
+    }));
+  preFiltered.forEach((track) => {
+    state.tracksMap.set(track.id, track);
+    state.filteringQueue.push(track.id);
+  });
+  const filteringAmount = state.filteringQueue.length;
+  let filteringDone = 0;
+  await startTracksFiltering(
+    state,
+    (ids) => {
+      onTrackProcess(ids.map((id) => state.tracksMap.get(id)));
+    },
+    () => {
+      filteringDone += 1;
+      onProgressChange(Math.round((filteringDone * 100) / filteringAmount));
+    },
+  );
+  onProgressChange(0);
+  onReadyStateChange(DOWNLOAD_BULK_READY_STATE.OBTAINING_URL);
+  toggleDownloadShelve(false);
+  const obtainingAmount = state.obtainingURLQueue.length;
+  let obtainingDone = 0;
+  await startURLObtaining(
+    state,
+    (ids) => {
+      onTrackProcess(ids.map((id) => state.tracksMap.get(id)));
+    },
+    () => {
+      obtainingDone += 1;
+      onProgressChange(Math.round((obtainingDone * 100) / obtainingAmount));
+    },
+  );
+  onProgressChange(0);
+  onReadyStateChange(DOWNLOAD_BULK_READY_STATE.DOWNLOADING);
+  const downloadingAmount = state.downloadingQueue.length;
+  let downloadingDone = 0;
+  await startDownloading(
+    state,
+    (ids) => {
+      onTrackProcess(ids.map((id) => state.tracksMap.get(id)));
+    },
+    () => {
+      downloadingDone += 1;
+      onProgressChange(Math.round((downloadingDone * 100) / downloadingAmount));
+    },
+  );
+  state.tracksMap.clear();
+  state.filteringQueue = [];
+  state.obtainingURLQueue = [];
+  state.downloadingQueue = [];
+  state.directURLMap.clear();
+  onProgressChange(100);
+  onReadyStateChange(DOWNLOAD_BULK_READY_STATE.FINISHED);
+  onFinished(
+    Array.from(state.failed),
+    Array.from(state.finished),
+  );
 }
 
-async function* bulkDownload(options) {
-  const {
-    list,
-    userId,
-    cookie,
-  } = options;
-  let index = 0;
-  if (list.length === 0) {
-    return {
-      item: null,
-      progress: 100,
-    };
-  }
-  while (index <= list.length - 1) {
-    const item = list[index];
-    const progress = Math.round(((index + 1) * 100) / list.length);
-    yield {
-      item,
-      progress,
-    };
-    try {
-      const track = getTrackFromItem(item);
-      // eslint-disable-next-line no-await-in-loop
-      const [[, directURL]] = await getDirectAudiosURL({
-        userId,
-        cookie,
-        tokens: [track.tokenForEncodedURL],
-      });
-      // eslint-disable-next-line no-await-in-loop
-      const arrayBufferURL = await getArrayBufferFromURL(directURL);
-      // eslint-disable-next-line no-await-in-loop
-      const arrayBufferURLWithTags = await getArrayBufferURLOfTrackWithID3Tags(arrayBufferURL, track);
-      // eslint-disable-next-line no-await-in-loop
-      await downloadTrack(track, arrayBufferURLWithTags);
-      revokeArrayBufferURL(arrayBufferURLWithTags);
-    }
-    catch (err) {
-      yield {
-        item,
-        error: err,
-      };
-    }
-    index += 1;
-  }
+/**
+ * Returns initial state
+ * @param {Object} options
+ * @param {string} options.userId
+ * @param {string} options.cookie
+ * @return {State}
+ * */
+function getInitialState(options) {
   return {
-    item: list[list.length - 1],
-    progress: 100,
+    userId: options.userId || '',
+    cookie: options.cookie || '',
+    tracksMap: new Map(),
+    filteringQueue: [],
+    obtainingURLQueue: [],
+    downloadingQueue: [],
+    finished: new Set(),
+    failed: new Set(),
+    directURLMap: new Map(),
+    errorsMap: new Map(),
   };
 }
 
-function getTrackFromItem(item) {
-  return WHITELISTED_AUDIO_FIELDS.reduce((result, key) => {
-    const value = item[key];
-    if (value !== undefined) {
-      result[key] = value;
-    }
-    return result;
-  }, {});
-}
-
-function getArrayBufferFromURL(url) {
-  return new Promise((resolve) => {
-    fetch(url)
-      .then((response) => {
-        if (!response.ok) {
-          return new ArrayBuffer(0);
-        }
-        return response.arrayBuffer();
-      })
-      .then(resolve);
+/**
+ * Starts filtering out already downloaded
+ * @param {State} state
+ * @param {OnStart} onStart
+ * @param {OnEnd} onEnd
+ * @return {Promise<void>}
+ * */
+async function startTracksFiltering(state, onStart, onEnd) {
+  const {
+    tracksMap,
+    filteringQueue,
+    obtainingURLQueue,
+  } = state;
+  const storage = await storageGet(ALREADY_DOWNLOADED_CACHE_KEY);
+  const alreadyChecked = new Map();
+  (storage[ALREADY_DOWNLOADED_CACHE_KEY] || []).forEach(([id, downloaded]) => {
+    alreadyChecked.set(id, downloaded);
   });
-}
-
-function getArrayBufferURLOfTrackWithID3Tags(arrayBufferURL, track) {
-  return new Promise((resolve) => {
-    const tagWriter = new ID3Writer(arrayBufferURL);
-    tagWriter
-      .setFrame('TIT2', track.title)
-      .setFrame('TPE1', track.allPerformers
-        .split(',')
-        .map((performer) => performer.trim()));
-    if (track.coverUrlBig) {
-      getArrayBufferFromURL(track.coverUrlBig)
-        .then((coverArrayBuffer) => {
-          tagWriter.setFrame('APIC', {
-            type: 3,
-            data: coverArrayBuffer,
-            description: 'Cover',
-          });
-          tagWriter.addTag();
-          resolve(tagWriter.getURL());
-        });
-    }
-    else {
-      tagWriter.addTag();
-      resolve(tagWriter.getURL());
-    }
-  });
-}
-
-function revokeArrayBufferURL(arrayBufferURL) {
-  URL.revokeObjectURL(arrayBufferURL);
-}
-
-function downloadTrack(track, directURL) {
-  return downloadFromURL(directURL, `${track.fullTitle}.mp3`);
-}
-
-function downloadFromURL(url, fileName) {
-  return new Promise((resolve) => {
-    window.chrome.downloads.download({
-      url,
-      filename: fileName,
-      conflictAction: 'overwrite',
-    }, (downloadId) => {
-      resolve(downloadId);
+  while (filteringQueue.length > 0) {
+    const chunk = filteringQueue.splice(0, OBTAINING_URL_CHUNK_SIZE);
+    onStart(chunk);
+    const areDownloaded = await Promise.all(chunk.map((id) => {
+      if (alreadyChecked.has(id)) {
+        return Promise.resolve(alreadyChecked.get(id));
+      }
+      return isTrackDownloaded(tracksMap.get(id));
+    }));
+    areDownloaded.forEach((downloaded, index) => {
+      const id = chunk[index];
+      if (!downloaded) {
+        obtainingURLQueue.push(id);
+      }
     });
+    await updateAlreadyDownloadedCache(
+      areDownloaded.map((downloaded, index) => [chunk[index], downloaded]),
+    );
+    onEnd(chunk);
+  }
+}
+
+/**
+ * @param {Track} track
+ * @return {Promise<boolean>}
+ * */
+function isTrackDownloaded(track) {
+  const sanitizedFileName = getSanitizedFileName(track.fullTitle);
+  const path = `${AUDIO_DIR_NAME}/${sanitizedFileName}.mp3`;
+  return isFileAlreadyDownloaded(path);
+}
+
+/**
+ * Starts URL obtaining
+ * @param {State} state
+ * @param {OnStart} onStart
+ * @param {OnEnd} onEnd
+ * @return {Promise<void>}
+ * */
+async function startURLObtaining(state, onStart, onEnd) {
+  const {
+    userId,
+    cookie,
+    tracksMap,
+    obtainingURLQueue,
+    downloadingQueue,
+    failed,
+    directURLMap,
+    errorsMap,
+  } = state;
+  if (tracksMap.size === 0) {
+    return;
+  }
+  while (obtainingURLQueue.length > 0) {
+    const chunk = obtainingURLQueue.splice(0, OBTAINING_URL_CHUNK_SIZE);
+    onStart(chunk);
+    try {
+      const urls = await getDirectAudiosURL({
+        tokens: chunk.reduce((result, id) => {
+          const track = tracksMap.get(id);
+          if (track.tokenForEncodedURL) {
+            return result.concat([track.tokenForEncodedURL]);
+          }
+          return result;
+        }, []),
+        userId,
+        cookie,
+      });
+      downloadingQueue.push(...chunk);
+      urls.forEach(([id, directURL]) => directURLMap.set(id, directURL));
+      onEnd(chunk);
+    }
+    catch (err) {
+      console.warn(err);
+      chunk.forEach((id) => {
+        failed.add(id);
+        errorsMap.set(id, err.toString());
+      });
+      onEnd(chunk);
+    }
+  }
+}
+
+/**
+ * Starts ID3 tags applying and downloading
+ * @param {State} state
+ * @param {OnStart} onStart
+ * @param {OnEnd} onEnd
+ * @return {Promise<void>}
+ * */
+async function startDownloading(state, onStart, onEnd) {
+  const {
+    tracksMap,
+    downloadingQueue,
+    finished,
+    failed,
+    directURLMap,
+    errorsMap,
+  } = state;
+  if (downloadingQueue.length === 0) {
+    return;
+  }
+  await downloadTracksWithID3Tags({
+    tracks: downloadingQueue.map((id) => {
+      const track = tracksMap.get(id);
+      const directURL = directURLMap.get(id);
+      return {
+        ...track,
+        directURL,
+      };
+    }),
+    onProcess(ids) {
+      onStart(ids);
+      ids.forEach((id) => {
+        const index = downloadingQueue.findIndex((item) => item !== id);
+        downloadingQueue.splice(index, 1);
+      });
+    },
+    onReady(error, id) {
+      if (error) {
+        failed.add(id);
+        errorsMap.set(id, error);
+        onEnd([id]);
+        return;
+      }
+      if (directURLMap.has(id)) {
+        directURLMap.delete(id);
+      }
+      finished.add(id);
+      onEnd([id]);
+      updateAlreadyDownloadedCache([[id, true]]);
+    },
   });
+}
+
+/**
+ * @param {Array<[string, boolean]>} list
+ * @return {Promise<void>}
+ * */
+async function updateAlreadyDownloadedCache(list) {
+  const storage = await storageGet(ALREADY_DOWNLOADED_CACHE_KEY);
+  const alreadyDownloadedCache = storage[ALREADY_DOWNLOADED_CACHE_KEY] || [];
+  const tempMap = new Map();
+  [...alreadyDownloadedCache, ...list].forEach(([id, downloaded]) => {
+    tempMap.set(id, downloaded);
+  });
+  const tempArray = Array.from(tempMap.entries());
+  await storageSet(ALREADY_DOWNLOADED_CACHE_KEY, tempArray);
+}
+
+/**
+ * Clears already downloaded cache
+ * @return {Promise<void>}
+ * */
+export function clearAlreadyDownloadedCache() {
+  return storageDelete(ALREADY_DOWNLOADED_CACHE_KEY);
 }

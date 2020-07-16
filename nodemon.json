@@ -4,6 +4,10 @@
     "NODE_ENV": "development"
   },
   "watch": [
+    "src/pages/*",
+    "src/styles/*",
+    "src/templates/*",
+    "src/manifest.json",
     "webpack",
     ".babelrc",
     ".eslintrc",

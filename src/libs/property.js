@@ -1,5 +1,12 @@
 import get from 'lodash/get';
 
+/**
+ * Deep property getter
+ * @param {Object} source
+ * @param {Array|string} path
+ * @param {*} defaultValue
+ * @return {*}
+ * */
 export default (source, path, defaultValue) => {
   if (defaultValue === undefined) {
     throw new TypeError('`defaultValue` is undefined');

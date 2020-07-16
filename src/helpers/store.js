@@ -29,6 +29,7 @@ import {
 import {
   DOWNLOAD_BULK_READY_STATE,
   startBulkDownload,
+  clearAlreadyDownloadedCache,
 } from '~/src/helpers/download';
 
 function updater(update, key, value) {
@@ -73,8 +74,9 @@ const exportSet = updater.bind(null, exportStore.update);
 const DOWNLOAD_STATE = {
   readyState: DOWNLOAD_BULK_READY_STATE.INITIAL,
   progress: 0,
-  item: '',
-  failedList: [],
+  current: [],
+  failed: [],
+  finished: [],
 };
 const downloadStore = writable(DOWNLOAD_STATE);
 const downloadSet = updater.bind(null, downloadStore.update);
@@ -91,6 +93,12 @@ async function init() {
 }
 async function reTry() {
   try {
+    const { ownerId } = get(musicStore);
+    await deleteUserDataFromStorage();
+    if (ownerId) {
+      await deleteListFromStorage(ownerId);
+    }
+    await clearAlreadyDownloadedCache();
     await obtainUserData();
     await obtainMusicList();
   }
@@ -214,31 +222,32 @@ async function startMusicExport() {
 async function startMusicDownload() {
   const { id, cookieValue } = get(userStore);
   const { list } = get(musicStore);
-  if (!id || !cookieValue || !list.length) {
-    downloadSet('readyState', DOWNLOAD_BULK_READY_STATE.NOT_READY);
-    return;
-  }
-  downloadSet('failedList', []);
-  downloadSet('readyState', DOWNLOAD_BULK_READY_STATE.DOWNLOADING);
   await startBulkDownload({
     list,
     userId: id,
     cookie: cookieValue,
-    onFail(item, error) {
-      downloadSet('failedList', (prevFailedList) => prevFailedList.concat([item]));
-      console.error(error, item);
+    onReadyStateChange(nextReadyState) {
+      downloadSet('readyState', nextReadyState);
     },
-    onProgress(item, progress) {
-      if (progress === 100) {
-        downloadSet('readyState', DOWNLOAD_BULK_READY_STATE.FINISHED);
-        downloadSet('progress', 0);
-        downloadSet('item', '');
-        return;
-      }
-      downloadSet('progress', progress);
-      downloadSet('item', item
-        ? item.fullTitle
-        : 'Unknown');
+    onProgressChange(nextProgress) {
+      downloadSet('progress', nextProgress);
+    },
+    onTrackProcess(tracks) {
+      downloadSet('current', tracks);
+    },
+    onFinished(failed, finished) {
+      const failedTracks = [];
+      const finishedTracks = [];
+      list.forEach((track) => {
+        if (failed.includes(track.id)) {
+          failedTracks.push(track);
+        }
+        else if (finished.includes(track.id)) {
+          finishedTracks.push(track);
+        }
+      });
+      downloadSet('failed', failedTracks);
+      downloadSet('finished', finishedTracks);
     },
   });
 }

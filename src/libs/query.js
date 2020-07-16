@@ -1,3 +1,8 @@
+/**
+ * Returns search query string
+ * @param {Object} query
+ * @return {string}
+ * */
 export function getStringFromQuery(query) {
   return Object
     .entries(query)
@@ -5,6 +10,11 @@ export function getStringFromQuery(query) {
     .join('&');
 }
 
+/**
+ * Returns search query object
+ * @param {string} string
+ * @return {Object}
+ * */
 export function getQueryFromString(string) {
   return string
     .split('&')

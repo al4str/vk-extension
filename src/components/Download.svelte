@@ -5,51 +5,71 @@
   import Pending from '~/src/components/Pending.svelte';
 
   export let className = '';
+  let initial = true;
+  let notReady = false;
+  let filtering = false;
+  let obtaining = false;
+  let downloading = false;
+  let finished = false;
   let pending = false;
+  let current = '';
   let url = '';
 
-  const { download, startMusicDownload } = getContext('stores');
+  const {
+    download,
+    startMusicDownload,
+  } = getContext('stores');
 
-  $: pending = [
-    DOWNLOAD_BULK_READY_STATE.NOT_READY,
-    DOWNLOAD_BULK_READY_STATE.DOWNLOADING,
-  ].includes($download.readyState);
+  $: initial = $download.readyState === DOWNLOAD_BULK_READY_STATE.INITIAL;
+  $: notReady = $download.readyState === DOWNLOAD_BULK_READY_STATE.NOT_READY;
+  $: filtering = $download.readyState === DOWNLOAD_BULK_READY_STATE.FILTERING;
+  $: obtaining = $download.readyState === DOWNLOAD_BULK_READY_STATE.OBTAINING_URL;
+  $: downloading = $download.readyState === DOWNLOAD_BULK_READY_STATE.DOWNLOADING;
+  $: finished = $download.readyState === DOWNLOAD_BULK_READY_STATE.FINISHED;
+  $: pending = filtering || obtaining || downloading;
+  $: current = $download.current.length
+    ? $download.current.map((track) => track.fullTitle)
+    : [];
 
   function handleDownloadStart() {
     startMusicDownload();
   }
 
   afterUpdate(() => {
-    if ($download.readyState === DOWNLOAD_BULK_READY_STATE.FINISHED
-      && $download.failedList.length > 0) {
-      const data = getCSVAudioList($download.failedList);
-      const blob = new Blob([data], { type: 'text/csv;charset=utf-8;' });
+    if (finished && $download.failed.length > 0) {
+      const data = getCSVAudioList($download.failed);
+      const blob = new window.Blob([data], { type: 'text/csv;charset=utf-8;' });
       url = window.URL.createObjectURL(blob);
     }
     else {
+      window.URL.revokeObjectURL(url);
       url = '';
     }
-  })
+  });
 </script>
 
 <div class="download {className}">
   <button
     class="btn download__start-btn"
-    class:download__start-btn_progress={$download.readyState === DOWNLOAD_BULK_READY_STATE.DOWNLOADING}
-    disabled={pending}
+    class:download__start-btn_progress={pending}
+    disabled={notReady || pending}
     type="button"
-    on:click={handleDownloadStart}
+    on:click={(initial || finished) ? handleDownloadStart : null}
   >
     <span class="btn__wrp">
       <span class="btn__label">
-        {#if $download.readyState === DOWNLOAD_BULK_READY_STATE.DOWNLOADING}
+        {#if filtering}
+          Filtering already downloaded ({$download.progress}%)
+        {:else if obtaining}
+          Obtaining direct urls ({$download.progress}%)
+        {:else if downloading}
           Downloading ({$download.progress}%)
         {:else}
           Start
         {/if}
       </span>
     </span>
-    {#if $download.readyState === DOWNLOAD_BULK_READY_STATE.DOWNLOADING}
+    {#if pending}
       <Pending
         className="download__start-pending"
         theme="dark"
@@ -57,18 +77,20 @@
     {/if}
   </button>
   <p class="download__message">
-    {#if $download.readyState === DOWNLOAD_BULK_READY_STATE.INITIAL}
+    {#if initial}
       Press "Start" to initiate download
-    {:else if $download.readyState === DOWNLOAD_BULK_READY_STATE.NOT_READY}
-      Main playlist is empty or there are no user id and cookie session
-    {:else if $download.readyState === DOWNLOAD_BULK_READY_STATE.DOWNLOADING}
-      <span class="download__item">
-        {$download.item}
+    {:else if notReady}
+      Main playlist is empty / stale cookie / no user ID ? no cookie
+    {:else if pending}
+      <span class="download__items">
+        {#each current as trackTitle}
+          <span class="download__item">
+            {trackTitle}
+          </span>
+        {/each}
       </span>
-    {:else if $download.readyState === DOWNLOAD_BULK_READY_STATE.FINISHED}
-      <span class="download__item">
-        Main playlist downloaded
-      </span>
+    {:else if finished}
+      Downloaded
       {#if url}
         <a
           class="export__link"
@@ -118,6 +140,7 @@
     color: #ffffffbe;
     text-align: center;
   }
+  .download__items {}
   .download__item {
     display: block;
     max-width: 80vw;

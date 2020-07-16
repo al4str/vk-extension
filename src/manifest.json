@@ -11,12 +11,14 @@
   "author": "al4str",
   "permissions": [
     "https://*.vk.com/audios*",
+    "https://*.vk.com/audio",
     "background",
     "cookies",
     "tabs",
     "activeTab",
     "storage",
-    "downloads"
+    "downloads",
+    "downloads.shelf"
   ],
   "optional_permissions": [
     "notifications"

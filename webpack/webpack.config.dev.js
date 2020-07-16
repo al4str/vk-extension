@@ -1,4 +1,5 @@
 const {
+  devtool,
   resolve,
   entry,
   output,
@@ -8,6 +9,7 @@ const {
   svelteLoader,
   cssLoader,
   esLintLoader,
+  workerLoader,
   plugins,
   extensionReloadPlugin,
   htmlPage,
@@ -21,6 +23,7 @@ const watch = true;
 module.exports = {
   mode,
   watch,
+  devtool,
   resolve,
   entry,
   output,
@@ -32,6 +35,7 @@ module.exports = {
       svelteLoader,
       cssLoader,
       svgInlineLoader,
+      workerLoader,
     ],
   },
   plugins: [

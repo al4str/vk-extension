@@ -72,13 +72,19 @@ module.exports.esLintLoader = {
   exclude: /node_modules/,
   loader: 'eslint-loader',
 };
+module.exports.workerLoader = {
+  test: /\.worker\.js$/,
+  loader: 'worker-loader',
+};
 module.exports.plugins = [
-  new CopyWebpackPlugin([
-    {
-      from: path.join(rootDir, 'static', 'icons'),
-      to: 'icons',
-    },
-  ]),
+  new CopyWebpackPlugin({
+    patterns: [
+      {
+        from: path.join(rootDir, 'static', 'icons'),
+        to: 'icons',
+      },
+    ]
+  }),
   new WebpackBar(),
   new GenerateJsonPlugin('manifest.json', {
     ...defaultManifestJson,
@@ -96,6 +102,7 @@ module.exports.performance = {
   hints: false,
 };
 module.exports.stats = 'minimal';
+module.exports.devtool = 'source-map';
 module.exports.optimization = (env) => {
   const isProd = env === 'production';
   const minimizerPlugin = new TerserPlugin();

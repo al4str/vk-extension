@@ -1,4 +1,4 @@
-import { DEFAULT_RESPONSE, fetch } from '~/src/libs/fetch';
+import { fetch } from '~/src/libs/fetch';
 import { getStringFromQuery } from '~/src/libs/query';
 import { decoder } from '~/src/libs/decoder';
 
@@ -52,6 +52,8 @@ export const WHITELISTED_AUDIO_FIELDS = [
   'coverUrlBig',
   'tokenForEncodedURL',
 ];
+
+export const AUDIO_DIR_NAME = 'vk-music';
 
 export function getDirectAudioURL(options) {
   const {
@@ -112,8 +114,8 @@ export function getHumanDuration(duration) {
 }
 
 export function mapAudioData(rawData) {
-  const id = rawData[CONSTANTS.INDEX_ID];
-  const ownerId = rawData[CONSTANTS.INDEX_OWNER_ID];
+  const id = rawData[CONSTANTS.INDEX_ID].toString();
+  const ownerId = rawData[CONSTANTS.INDEX_OWNER_ID].toString();
   const title = rawData[CONSTANTS.INDEX_TITLE] || '';
   const performer = rawData[CONSTANTS.INDEX_PERFORMER] || '';
   const subTitle = rawData[CONSTANTS.INDEX_SUBTITLE];
@@ -217,16 +219,22 @@ export function mapAudioPage(rawData) {
 }
 
 export function mapEncodedAudioData(rawData, userId) {
-  if (!Array.isArray(rawData)) {
+  if (!Array.isArray(rawData) || !rawData[0]) {
     return [];
   }
   return rawData[0].map((item) => {
-    const id = item[CONSTANTS.INDEX_ID];
+    const id = item[CONSTANTS.INDEX_ID].toString();
     const url = item[CONSTANTS.INDEX_URL];
-    const directURL = getDirectAudioURL({
-      userId,
-      encodedURL: url,
-    });
+    let directURL;
+    try {
+      directURL = getDirectAudioURL({
+        userId,
+        encodedURL: url,
+      });
+    }
+    catch (err) {
+      directURL = '';
+    }
     return [id, directURL];
   });
 }
@@ -252,10 +260,7 @@ export function getAudioPage(options) {
         body: `_ajax=1&offset=${offset}`,
         credentials: 'include',
       },
-      {
-        ...DEFAULT_RESPONSE,
-        data: { 0: [[]] },
-      },
+      { 0: [[]] },
     )
       .then((raw) => {
         return raw.json();
@@ -269,6 +274,18 @@ export function getAudioPage(options) {
   });
 }
 
+/**
+ * @typedef {[string, string]} DirectURLTuple
+ * */
+
+/**
+ * Returns array of direct audio URLs
+ * @param {Object} options
+ * @param {string} options.userId - VK user id for decoding direct URL
+ * @param {string} options.cookie - VK cookie for API request
+ * @param {Array<string>} options.tokens - Array of track's `tokenForEncodedURL`
+ * @return {Promise<Array<DirectURLTuple>>}
+ * */
 export function getDirectAudiosURL(options) {
   return new Promise((resolve, reject) => {
     const {
@@ -293,16 +310,24 @@ export function getDirectAudiosURL(options) {
         }),
         credentials: 'include',
       },
-      {
-        ...DEFAULT_RESPONSE,
-        data: [[]],
-      },
+      [],
     )
       .then((raw) => {
+        if (!raw.ok) {
+          throw new Error(raw.statusText);
+        }
+        if (raw.headers.get('content-type').indexOf('application/json') === -1) {
+          raw.text().then(console.warn);
+          throw new Error('Bad hash');
+        }
         return raw.json();
       })
       .then((res) => {
-        resolve(mapEncodedAudioData(res.data, userId));
+        const decodedURLTuple = mapEncodedAudioData(res.data, userId);
+        if (!decodedURLTuple.length) {
+          throw new Error('Obtaining direct URL failed: stale cookie or `ids` limit reached');
+        }
+        resolve(decodedURLTuple);
       })
       .catch((err) => {
         reject(err);
@@ -370,4 +395,14 @@ export function getCSVAudioItem(item, header) {
       return stringValue;
     })
     .join(',');
+}
+
+export function getWhitelistedFieldsFrom(from) {
+  return WHITELISTED_AUDIO_FIELDS.reduce((result, key) => {
+    const value = from[key];
+    if (value !== undefined) {
+      result[key] = value;
+    }
+    return result;
+  }, {});
 }

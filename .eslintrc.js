@@ -6,11 +6,14 @@ module.exports = {
     sourceType: 'module',
   },
   globals: {
+    window: true,
     chrome: true,
+    self: true,
   },
   env: {
     es6: true,
     browser: true,
+    worker: true,
   },
   extends: [
     'eslint-config-airbnb-base',

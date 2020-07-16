@@ -1,4 +1,5 @@
 const {
+  devtool,
   resolve,
   entry,
   output,
@@ -9,6 +10,7 @@ const {
   svgInlineLoader,
   cssLoader,
   esLintLoader,
+  workerLoader,
   plugins,
   htmlPage,
   cleanPlugin,
@@ -19,6 +21,7 @@ const mode = 'production';
 
 module.exports = {
   mode,
+  devtool,
   resolve,
   entry,
   output,
@@ -31,6 +34,7 @@ module.exports = {
       esLintLoader,
       svgInlineLoader,
       cssLoader,
+      workerLoader,
     ],
   },
   plugins: [
