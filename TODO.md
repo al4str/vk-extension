@@ -1,25 +1,29 @@
 # TODO
 
+## General
+- *add russian lang
+- *detect lang
+- *add readme
+- *make github release
+- *make steps with images how to add extension to chrome
+- document helpers/libs with jsDoc
+- replace no cover with music note icon
+
+## Exporting
+- to spotify
+
 ## Downloading
-- move download process to background script
-- stop process
-- pause/resume process
-- open directory button
+- stop/pause/resume
 - custom download directory field
 - choice of overwrite file, add postfix or just skip
-- add ability to search downloaded files
-- download progress in percentage
-- show tracks list in progress
+- download only .csv file
 - show tracks list of failed with error messages
 - retry for failed list
 - retry for single track
-- download .csv of failed tracks
 
 ## Inspiration
-[](https://assets.materialup.com/uploads/5b216eb9-84bf-42d3-90aa-65cb4c19c965/preview.png)
-[](https://cdn.domestika.org/c_limit,dpr_auto,f_auto,q_auto,w_820/v1506915446/content-items/002/092/842/MusicPlayerUI_GorillazPink-original.png?1506915446)
-[](https://teenage.engineering/products/op-1/modules)
-UI: OP-1 minimalism
-Font: Nixin by Kinobrand
+![OP-1 minimalism](https://i.imgur.com/J7wZwx6.png)
+[UI: OP-1 minimalism](https://teenage.engineering/products/op-1/modules)
 
-
+![Nixin](https://cdn.myfonts.net/s/aw/1440x720/442/0/226750.jpg)
+[Font: Nixin by Kinobrand](https://www.myfonts.com/fonts/kinobrand/nixin/)
