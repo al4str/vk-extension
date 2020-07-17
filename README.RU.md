@@ -2,7 +2,7 @@
 
 [English](https://github.com/al4str/vk-extension/blob/master/README.md)
 
-![VK Extension скриншот](https://i.imgur.com/gkJSwOo.png)
+![VK Extension скриншот](https://i.imgur.com/FkTD8du.png)
 
 Расширение показывает аудиозаписи из основного плейлиста. Экспортирует треки как `.csv` файл (который можно загрузить в сервис типа [TuneMyMusic](https://www.tunemymusic.com/) для переноса в Spotify, Deezer, Youtube Music, Apple Music и т.д.) Пытается как может экспортировать прямо на ваше устройство с уже заполненными ID3 данными.
 
