@@ -37,7 +37,7 @@ const CONSTANTS = {
   EXPLICIT_BIT: 1024,
 };
 
-export const WHITELISTED_AUDIO_FIELDS = [
+export const DEFAULT_AUDIO_FIELDS = [
   'id',
   'ownerId',
   'fullId',
@@ -51,6 +51,11 @@ export const WHITELISTED_AUDIO_FIELDS = [
   'coverUrlSmall',
   'coverUrlBig',
   'tokenForEncodedURL',
+];
+
+export const MINIMAL_AUDIO_FIELDS = [
+  'title',
+  'allPerformers',
 ];
 
 export const AUDIO_DIR_NAME = 'vk-music';
@@ -376,9 +381,9 @@ export function getCSVAudioHeader(item) {
   }
   return Object
     .keys(item)
-    .filter((key) => WHITELISTED_AUDIO_FIELDS.includes(key))
+    .filter((key) => DEFAULT_AUDIO_FIELDS.includes(key))
     .sort((a, b) => {
-      return WHITELISTED_AUDIO_FIELDS.indexOf(a) - WHITELISTED_AUDIO_FIELDS.indexOf(b);
+      return DEFAULT_AUDIO_FIELDS.indexOf(a) - DEFAULT_AUDIO_FIELDS.indexOf(b);
     });
 }
 
@@ -397,8 +402,18 @@ export function getCSVAudioItem(item, header) {
     .join(',');
 }
 
-export function getWhitelistedFieldsFrom(from) {
-  return WHITELISTED_AUDIO_FIELDS.reduce((result, key) => {
+export function getDefaultFieldsFrom(from) {
+  return DEFAULT_AUDIO_FIELDS.reduce((result, key) => {
+    const value = from[key];
+    if (value !== undefined) {
+      result[key] = value;
+    }
+    return result;
+  }, {});
+}
+
+export function getMinimalFieldsFrom(from) {
+  return MINIMAL_AUDIO_FIELDS.reduce((result, key) => {
     const value = from[key];
     if (value !== undefined) {
       result[key] = value;

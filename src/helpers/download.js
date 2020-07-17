@@ -1,13 +1,12 @@
 /* eslint-disable no-await-in-loop */
-import { getSanitizedFileName } from '~/src/libs/filename';
 import { storageSet, storageGet, storageDelete } from '~/src/helpers/storage';
-import { AUDIO_DIR_NAME, getDirectAudiosURL } from '~/src/helpers/audio';
-import { toggleDownloadShelve, isFileAlreadyDownloaded } from '~/src/helpers/downloader';
+import { getDirectAudiosURL } from '~/src/helpers/audio';
+import { toggleDownloadShelve } from '~/src/helpers/downloader';
 import { downloadTracksWithID3Tags } from '~/src/helpers/id3tags.pool';
 
 const ALREADY_DOWNLOADED_CACHE_KEY = 'ALREADY_DOWNLOADED';
 
-const OBTAINING_URL_CHUNK_SIZE = 3; // 10
+const OBTAINING_URL_CHUNK_SIZE = 3;
 
 export const DOWNLOAD_BULK_READY_STATE = {
   INITIAL: 'INITIAL',
@@ -209,6 +208,7 @@ export async function startBulkDownload(options) {
     Array.from(state.failed),
     Array.from(state.finished),
   );
+  toggleDownloadShelve(true);
 }
 
 /**
@@ -242,7 +242,6 @@ function getInitialState(options) {
  * */
 async function startTracksFiltering(state, onStart, onEnd) {
   const {
-    tracksMap,
     filteringQueue,
     obtainingURLQueue,
   } = state;
@@ -254,33 +253,14 @@ async function startTracksFiltering(state, onStart, onEnd) {
   while (filteringQueue.length > 0) {
     const chunk = filteringQueue.splice(0, OBTAINING_URL_CHUNK_SIZE);
     onStart(chunk);
-    const areDownloaded = await Promise.all(chunk.map((id) => {
-      if (alreadyChecked.has(id)) {
-        return Promise.resolve(alreadyChecked.get(id));
-      }
-      return isTrackDownloaded(tracksMap.get(id));
-    }));
-    areDownloaded.forEach((downloaded, index) => {
-      const id = chunk[index];
+    chunk.forEach((id) => {
+      const downloaded = alreadyChecked.get(id) || false;
       if (!downloaded) {
         obtainingURLQueue.push(id);
       }
     });
-    await updateAlreadyDownloadedCache(
-      areDownloaded.map((downloaded, index) => [chunk[index], downloaded]),
-    );
     onEnd(chunk);
   }
-}
-
-/**
- * @param {Track} track
- * @return {Promise<boolean>}
- * */
-function isTrackDownloaded(track) {
-  const sanitizedFileName = getSanitizedFileName(track.fullTitle);
-  const path = `${AUDIO_DIR_NAME}/${sanitizedFileName}.mp3`;
-  return isFileAlreadyDownloaded(path);
 }
 
 /**

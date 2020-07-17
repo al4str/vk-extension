@@ -1,6 +1,3 @@
-import { createTrack } from '~/src/helpers/library';
-import { WHITELISTED_AUDIO_FIELDS } from '~/src/helpers/audio';
-
 export const EXPORT_READY_STATE = {
   INITIAL: 'INITIAL',
   NOT_READY: 'NOT_READY',
@@ -35,28 +32,10 @@ async function* exportList(list) {
       item,
       progress,
     };
-    try {
-      const track = getTrackFromItem(item);
-      // eslint-disable-next-line no-await-in-loop
-      await createTrack(track);
-    }
-    catch (err) {
-      console.error(err);
-    }
     index += 1;
   }
   return {
     item: list[list.length - 1],
     progress: 100,
   };
-}
-
-function getTrackFromItem(item) {
-  return WHITELISTED_AUDIO_FIELDS.reduce((result, key) => {
-    const value = item[key];
-    if (value !== undefined) {
-      result[key] = value;
-    }
-    return result;
-  }, {});
 }

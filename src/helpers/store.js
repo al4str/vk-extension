@@ -1,5 +1,6 @@
 import { writable, get } from 'svelte/store';
 import { ERROR_MESSAGE } from '~/src/helpers/error';
+import { sendMessage, onMessage } from '~/src/helpers/messages';
 import {
   COOKIE_NAME,
   isCookieExpired,
@@ -23,12 +24,7 @@ import {
   deleteListFromStorage,
 } from '~/src/helpers/list';
 import {
-  EXPORT_READY_STATE,
-  startExport,
-} from '~/src/helpers/export';
-import {
   DOWNLOAD_BULK_READY_STATE,
-  startBulkDownload,
   clearAlreadyDownloadedCache,
 } from '~/src/helpers/download';
 
@@ -63,14 +59,6 @@ const ROOT_STATE = {
 };
 const rootStore = writable(ROOT_STATE);
 
-const EXPORT_STATE = {
-  readyState: EXPORT_READY_STATE.INITIAL,
-  progress: 0,
-  item: null,
-};
-const exportStore = writable(EXPORT_STATE);
-const exportSet = updater.bind(null, exportStore.update);
-
 const DOWNLOAD_STATE = {
   readyState: DOWNLOAD_BULK_READY_STATE.INITIAL,
   progress: 0,
@@ -83,11 +71,16 @@ const downloadSet = updater.bind(null, downloadStore.update);
 
 async function init() {
   try {
-    await obtainUserData();
-    await obtainMusicList();
+    await Promise.all([
+      (async () => {
+        await obtainUserData();
+        return obtainMusicList();
+      })(),
+      getBackgroundDownloadState(),
+    ]);
   }
   catch (err) {
-    console.error(err);
+    console.warn(err);
     addError(err);
   }
 }
@@ -103,7 +96,7 @@ async function reTry() {
     await obtainMusicList();
   }
   catch (err) {
-    console.error(err);
+    console.warn(err);
     addError(err);
   }
 }
@@ -142,7 +135,7 @@ async function obtainUserData() {
     userSet('readyState', USER_READY_STATE.READY);
   }
   catch (err) {
-    console.error(err);
+    console.warn(err);
     addError(err);
   }
 }
@@ -192,64 +185,54 @@ async function obtainMusicList(forceRefresh = false) {
     musicSet('readyState', LIST_READY_STATE.READY);
   }
   catch (err) {
-    console.error(err);
+    console.warn(err);
     addError(err);
   }
 }
-async function startMusicExport() {
-  const { list } = get(musicStore);
-  if (!list.length) {
-    exportSet('readyState', EXPORT_READY_STATE.NOT_READY);
-    return;
-  }
-  exportSet('readyState', EXPORT_READY_STATE.PROCESSING);
-  await startExport({
-    list,
-    onProcess(item, progress) {
-      if (progress === 100) {
-        exportSet('readyState', EXPORT_READY_STATE.FINISHED);
-        exportSet('progress', 0);
-        exportSet('item', null);
-        return;
-      }
-      exportSet('progress', progress);
-      exportSet('item', item
-        ? item.fullTitle
-        : 'Unknown');
-    },
+async function getBackgroundDownloadState() {
+  onMessage('download:state', (backgroundDownloadState) => {
+    const {
+      readyState,
+      progress,
+      tracks,
+      failed,
+      finished,
+    } = backgroundDownloadState;
+    downloadSet('readyState', readyState);
+    downloadSet('progress', progress);
+    downloadSet('current', tracks);
+    downloadSet('failed', failed);
+    downloadSet('finished', finished);
   });
+  await sendMessage('download:state');
 }
 async function startMusicDownload() {
   const { id, cookieValue } = get(userStore);
   const { list } = get(musicStore);
-  await startBulkDownload({
-    list,
-    userId: id,
-    cookie: cookieValue,
-    onReadyStateChange(nextReadyState) {
-      downloadSet('readyState', nextReadyState);
-    },
-    onProgressChange(nextProgress) {
-      downloadSet('progress', nextProgress);
-    },
-    onTrackProcess(tracks) {
-      downloadSet('current', tracks);
-    },
-    onFinished(failed, finished) {
-      const failedTracks = [];
-      const finishedTracks = [];
-      list.forEach((track) => {
-        if (failed.includes(track.id)) {
-          failedTracks.push(track);
-        }
-        else if (finished.includes(track.id)) {
-          finishedTracks.push(track);
-        }
-      });
-      downloadSet('failed', failedTracks);
-      downloadSet('finished', finishedTracks);
-    },
+  onMessage('download:on-ready-state-change', (nextReadyState) => {
+    downloadSet('readyState', nextReadyState);
   });
+  onMessage('download:on-progress-change', (nextProgress) => {
+    downloadSet('progress', nextProgress);
+  });
+  onMessage('download:on-track-process', (tracks) => {
+    downloadSet('current', tracks);
+  });
+  onMessage('download:on-finish', ({ failed, finished }) => {
+    downloadSet('failed', failed);
+    downloadSet('finished', finished);
+  });
+  try {
+    await sendMessage('download:start', {
+      list,
+      userId: id,
+      cookie: cookieValue,
+    });
+  }
+  catch (err) {
+    console.warn(err);
+    addError(err);
+  }
 }
 function addError(err) {
   const { update } = rootStore;
@@ -284,13 +267,11 @@ export function getStores() {
     root: rootStore,
     user: userStore,
     music: musicStore,
-    export: exportStore,
     download: downloadStore,
     init,
     reTry,
     obtainMusicList,
     setMusicOwnerId,
-    startMusicExport,
     startMusicDownload,
   };
 }
