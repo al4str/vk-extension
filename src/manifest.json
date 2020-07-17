@@ -24,7 +24,7 @@
     "notifications"
   ],
   "browser_action": {
-    "default_title": "VK extension",
+    "default_title": "VK Extension",
     "default_popup": "pages/popup.html"
   },
   "background": {

@@ -1,16 +1,13 @@
 # TODO
 
 ## General
-- *add russian lang
-- *detect lang
-- *add readme
-- *make github release
-- *make steps with images how to add extension to chrome
-- document helpers/libs with jsDoc
-- replace no cover with music note icon
+- add readme
+- make github release
+- make steps with images how to add extension to chrome
+- document all exported helpers/libs with jsDoc
 
 ## Exporting
-- to spotify
+- directly to spotify
 
 ## Downloading
 - stop/pause/resume

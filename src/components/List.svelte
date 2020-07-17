@@ -7,7 +7,7 @@
 
   const LIMIT = 20;
   const stores = getContext('stores');
-  const { music } = stores;
+  const { i18n, music } = stores;
 
   let offset = 0;
   let length = LIMIT;
@@ -48,29 +48,29 @@
 <div class="list {className}">
   {#if $music.readyState === LIST_READY_STATE.INITIAL}
   <p class="list__state">
-    List initializing..
+    {$i18n.listTab.stateInitial}
   </p>
   {:else if $music.readyState === LIST_READY_STATE.STORAGE}
   <p class="list__state">
-    Getting list from storage..
+    {$i18n.listTab.stateStorage}
   </p>
   {:else if $music.readyState === LIST_READY_STATE.FETCH}
   <p class="list__state">
-    Loading list..
+    {$i18n.listTab.stateFetching}
   </p>
   {:else if $music.readyState === LIST_READY_STATE.NO_USER}
   <p class="list__state">
-    No user to show music tracks from
+    {$i18n.listTab.stateNoUser}
   </p>
   {:else if $music.readyState === LIST_READY_STATE.READY && $music.list.length === 0}
   <p class="list__state">
-    No tracks found
+    {$i18n.listTab.stateNoTracks}
   </p>
   {:else}
   <div class="list__actions">
     <label class="list__owner-wrp">
       <span class="list__owner-label">
-        Music owner ID
+        {$i18n.listTab.labelOwnerId}
       </span>
       <input
         class="input list__owner-field"
@@ -85,7 +85,11 @@
       type="button"
       on:click={handleListRefresh}
     >
-      Refresh
+      <span class="btn__wrp">
+        <span class="btn__label">
+          {$i18n.listTab.actionRefresh}
+        </span>
+      </span>
     </button>
     {/if}
   </div>

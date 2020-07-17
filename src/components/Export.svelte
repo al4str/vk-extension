@@ -1,5 +1,5 @@
 <script>
-  import { getContext, onDestroy } from 'svelte';
+  import { getContext } from 'svelte';
   import { downloadFromURL } from '~/src/helpers/downloader';
   import {
     getDefaultFieldsFrom,
@@ -8,12 +8,10 @@
   } from '~/src/helpers/audio';
 
   export let className = '';
-  let minimalListURL = '';
-  let defaultListURL = '';
   let disabled = true;
 
   const stores = getContext('stores');
-  const { music } = stores;
+  const { i18n, music } = stores;
 
   $: disabled = $music.list.length === 0;
 
@@ -23,31 +21,24 @@
     return window.URL.createObjectURL(blob);
   }
   async function downloadDefaultList() {
-    const defaultList = $music.list.map(getDefaultFieldsFrom);
-    const defaultListURL = getCSVListURL(defaultList);
-    await downloadFromURL(defaultListURL, `vk-${$music.ownerId}-playlist.csv`, true);
+    const list = $music.list.map(getDefaultFieldsFrom);
+    const url = getCSVListURL(list);
+    await downloadFromURL(url, `vk-${$music.ownerId}-playlist.csv`, true);
+    window.URL.revokeObjectURL(url);
   }
   async function downloadMinimalList() {
-    const minimalList = $music.list.map(getMinimalFieldsFrom);
-    const defaultListURL = getCSVListURL(minimalList);
-    await downloadFromURL(defaultListURL, `vk-${$music.ownerId}-playlist-mini.csv`, true);
+    const list = $music.list.map(getMinimalFieldsFrom);
+    const url = getCSVListURL(list);
+    await downloadFromURL(url, `vk-${$music.ownerId}-playlist-mini.csv`, true);
+    window.URL.revokeObjectURL(url);
   }
-
-  onDestroy(() => {
-    if (defaultListURL) {
-      window.URL.revokeObjectURL(defaultListURL);
-    }
-    if (minimalListURL) {
-      window.URL.revokeObjectURL(minimalListURL);
-    }
-  })
 </script>
 
 <div class="export {className}">
   <div class="export__wrp">
     <span class="export__label">
       <span>
-        Files for exporting through
+        {$i18n.exportTab.messageThrough}
       </span>
       <a
         class="export__link"
@@ -66,7 +57,7 @@
     >
       <span class="btn__wrp">
         <span class="btn__label btn__label_multi">
-          Download .csv file with default track fields
+          {$i18n.exportTab.actionGetDefault}
         </span>
       </span>
     </button>
@@ -78,7 +69,7 @@
     >
       <span class="btn__wrp">
         <span class="btn__label btn__label_multi">
-          Download .csv file with only title and performer fields
+          {$i18n.exportTab.actionGetMinimal}
         </span>
       </span>
     </button>

@@ -1,6 +1,6 @@
 <script>
-  import { getContext, afterUpdate, onDestroy } from 'svelte';
-  import { showDownloadedFile } from '~/src/helpers/downloader';
+  import { getContext } from 'svelte';
+  import { downloadFromURL, showDownloadedFile } from '~/src/helpers/downloader';
   import { DOWNLOAD_BULK_READY_STATE } from '~/src/helpers/download';
   import { AUDIO_DIR_NAME, getCSVAudioList } from '~/src/helpers/audio';
   import Pending from '~/src/components/Pending.svelte';
@@ -16,10 +16,7 @@
   let current = '';
   let url = '';
 
-  const {
-    download,
-    startMusicDownload,
-  } = getContext('stores');
+  const { i18n, music, download, tag, startMusicDownload } = getContext('stores');
 
   $: initial = $download.readyState === DOWNLOAD_BULK_READY_STATE.INITIAL;
   $: notReady = $download.readyState === DOWNLOAD_BULK_READY_STATE.NOT_READY;
@@ -36,24 +33,21 @@
     startMusicDownload();
   }
 
+  function getCSVListURL(list) {
+    const data = getCSVAudioList(list);
+    const blob = new window.Blob([data], { type: 'text/csv;charset=utf-8;' });
+    return window.URL.createObjectURL(blob);
+  }
+
+  async function handleFailedTracksDownload() {
+    const url = getCSVListURL($download.failed);
+    await downloadFromURL(url, `vk-${$music.ownerId}-failed-to-download.csv`, true);
+    window.URL.revokeObjectURL(url);
+  }
+
   function handleShowDir() {
     showDownloadedFile(AUDIO_DIR_NAME);
   }
-
-  afterUpdate(() => {
-    if (finished && $download.failed.length > 0) {
-      const data = getCSVAudioList($download.failed);
-      const blob = new window.Blob([data], { type: 'text/csv;charset=utf-8;' });
-      url = window.URL.createObjectURL(blob);
-    }
-    else {
-      url = '';
-    }
-  });
-
-  onDestroy(() => {
-    window.URL.revokeObjectURL(url);
-  })
 </script>
 
 <div class="download {className}">
@@ -70,15 +64,15 @@
       <span class="btn__wrp">
         <span class="btn__label">
           {#if filtering}
-            Filtering already downloaded ({$download.progress}%)
+            {$i18n.downloadTab.stateFiltering} ({$download.progress}%)
           {:else if obtaining}
-            Obtaining direct urls ({$download.progress}%)
+            {$i18n.downloadTab.stateObtaining} ({$download.progress}%)
           {:else if downloading}
-            Downloading ({$download.progress}%)
+            {$i18n.downloadTab.stateDownloading} ({$download.progress}%)
           {:else if finished}
-            Start again
+            {$i18n.downloadTab.actionStartAgain}
           {:else}
-            Start
+            {$i18n.downloadTab.actionStart}
           {/if}
         </span>
       </span>
@@ -91,9 +85,9 @@
     </button>
     <p class="download__message">
       {#if initial}
-        Press "Start" to initiate download
+        {$i18n.downloadTab.messageInitial}
       {:else if notReady}
-        Main playlist is empty / stale cookie / no user ID / no cookie
+        {$i18n.downloadTab.messageNotReady}
       {:else if pending}
         <span class="download__items">
           {#each current as trackTitle}
@@ -103,19 +97,23 @@
           {/each}
         </span>
       {:else if finished}
-        Download finished {$download.finished.length}/{$download.finished.length + $download.failed.length}
+        {$i18n.downloadTab.messageFinished} {$download.finished.length}/{$download.finished.length + $download.failed.length}
       {/if}
     </p>
     {#if finished}
       <div class="download__actions">
-        {#if url}
-          <a
+        {#if $download.failed.length > 0}
+          <button
             class="btn download__action download__btn"
-            href={url}
-            download="vk-tracks-failed-to-download.csv"
+            type="button"
+            on:click={handleFailedTracksDownload}
           >
-            Get .csv file of failed {$download.failed.length} tracks
-          </a>
+            <span class="btn__wrp">
+              <span class="btn__label">
+                {tag($i18n.downloadTab.actionGetFailed, $download.failed.length)}
+              </span>
+            </span>
+          </button>
         {/if}
         <button
           class="btn download__action download__btn"
@@ -124,7 +122,7 @@
         >
           <span class="btn__wrp">
             <span class="btn__label">
-              Show directory
+              {$i18n.downloadTab.actionShowDir}
             </span>
           </span>
         </button>

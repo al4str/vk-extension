@@ -1,4 +1,5 @@
 <script>
+  import { getContext } from 'svelte';
   import List from '~/src/components/List.svelte';
   import Export from '~/src/components/Export.svelte';
   import Download from '~/src/components/Download.svelte';
@@ -13,6 +14,9 @@
   let selectedTabKey = TABS.LIST;
   let tabs = [];
 
+  const stores = getContext('stores');
+  const { i18n } = stores;
+
   function handleTabSelect(nextTabKey) {
     selectedTabKey = nextTabKey;
   }
@@ -20,19 +24,19 @@
   $: tabs = [
     {
       key: TABS.LIST,
-      label: 'Main playlist',
+      label: $i18n.tabs.actionMain,
       selected: TABS.LIST === selectedTabKey,
       onSelect: () => handleTabSelect(TABS.LIST),
     },
     {
       key: TABS.EXPORT,
-      label: 'Export',
+      label: $i18n.tabs.actionExport,
       selected: TABS.EXPORT === selectedTabKey,
       onSelect: () => handleTabSelect(TABS.EXPORT),
     },
     {
       key: TABS.DOWNLOAD,
-      label: 'Download',
+      label: $i18n.tabs.actionDownload,
       selected: TABS.DOWNLOAD === selectedTabKey,
       onSelect: () => handleTabSelect(TABS.DOWNLOAD),
     },

@@ -1,6 +1,7 @@
-import { writable, get } from 'svelte/store';
+import { readable, writable, get } from 'svelte/store';
 import { ERROR_MESSAGE } from '~/src/helpers/error';
 import { sendMessage, onMessage } from '~/src/helpers/messages';
+import { getI18NStrings, replaceI18NString } from '~/src/helpers/i18n';
 import {
   COOKIE_NAME,
   isCookieExpired,
@@ -36,6 +37,9 @@ function updater(update, key, value) {
       : value,
   }));
 }
+
+const I18N_STATE = getI18NStrings();
+const i18nStore = readable(I18N_STATE);
 
 const USER_STATE = {
   readyState: USER_READY_STATE.INITIAL,
@@ -264,10 +268,12 @@ function setMusicOwnerId(nextOwnerId) {
 
 export function getStores() {
   return {
+    i18n: i18nStore,
     root: rootStore,
     user: userStore,
     music: musicStore,
     download: downloadStore,
+    tag: replaceI18NString,
     init,
     reTry,
     obtainMusicList,

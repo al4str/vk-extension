@@ -5,7 +5,7 @@
   export let className = '';
 
   const stores = getContext('stores');
-  const { user } = stores;
+  const { i18n, user } = stores;
   let partlyHiddenCookie = '';
 
   $: partlyHiddenCookie = $user.cookieValue.slice(0, 12).concat('*****');
@@ -18,32 +18,32 @@
 <div class="user {className}">
   {#if $user.readyState === USER_READY_STATE.INITIAL}
     <p class="user__state">
-      Initializing
+      {$i18n.user.stateInitial}
     </p>
   {:else if $user.readyState === USER_READY_STATE.STORAGE}
     <p class="user__state">
-      Getting user data from storage
+      {$i18n.user.stateStorage}
     </p>
   {:else if $user.readyState === USER_READY_STATE.TABS}
     <p class="user__state">
-      Getting user data from opened VK tab
+      {$i18n.user.stateTabs}
     </p>
   {:else if $user.readyState === USER_READY_STATE.COOKIES}
     <p class="user__state">
-      Getting cookie information
+      {$i18n.user.stateCookies}
     </p>
   {:else if $user.readyState === USER_READY_STATE.EXPIRED}
     <p class="user__state">
-      Cookie has expired
+      {$i18n.user.stateExpired}
     </p>
   {:else if $user.readyState === USER_READY_STATE.NOT_FOUND}
     <p class="user__state">
-      Would you be so kind to login into your vk account and open your audios page
+      {$i18n.user.stateNotFound}
     </p>
   {:else if $user.readyState === USER_READY_STATE.READY}
     <span class="user__item">
       <span class="user__label">
-        User ID
+        {$i18n.user.labelUserId}
       </span>
       <span class="user__value">
         {$user.id}
@@ -51,7 +51,7 @@
     </span>
     <span class="user__item">
       <span class="user__label">
-        Cookie
+        {$i18n.user.labelCookie}
       </span>
       <span class="user__value">
         {partlyHiddenCookie}
@@ -63,7 +63,11 @@
     type="button"
     on:click={handleReTry}
   >
-    Retry
+    <span class="btn__wrp">
+      <span class="btn__label">
+        {$i18n.user.actionRetry}
+      </span>
+    </span>
   </button>
 </div>
 
