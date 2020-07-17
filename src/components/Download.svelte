@@ -1,7 +1,8 @@
 <script>
-  import { getContext, afterUpdate } from 'svelte';
+  import { getContext, afterUpdate, onDestroy } from 'svelte';
+  import { showDownloadedFile } from '~/src/helpers/downloader';
   import { DOWNLOAD_BULK_READY_STATE } from '~/src/helpers/download';
-  import { getCSVAudioList } from '~/src/helpers/audio';
+  import { AUDIO_DIR_NAME, getCSVAudioList } from '~/src/helpers/audio';
   import Pending from '~/src/components/Pending.svelte';
 
   export let className = '';
@@ -35,6 +36,10 @@
     startMusicDownload();
   }
 
+  function handleShowDir() {
+    showDownloadedFile(AUDIO_DIR_NAME);
+  }
+
   afterUpdate(() => {
     if (finished && $download.failed.length > 0) {
       const data = getCSVAudioList($download.failed);
@@ -42,67 +47,90 @@
       url = window.URL.createObjectURL(blob);
     }
     else {
-      window.URL.revokeObjectURL(url);
       url = '';
     }
   });
+
+  onDestroy(() => {
+    window.URL.revokeObjectURL(url);
+  })
 </script>
 
 <div class="download {className}">
-  <button
-    class="btn download__start-btn"
-    class:download__start-btn_progress={pending}
-    disabled={notReady || pending}
-    type="button"
-    on:click={(initial || finished) ? handleDownloadStart : null}
-  >
-    <span class="btn__wrp">
-      <span class="btn__label">
-        {#if filtering}
-          Filtering already downloaded ({$download.progress}%)
-        {:else if obtaining}
-          Obtaining direct urls ({$download.progress}%)
-        {:else if downloading}
-          Downloading ({$download.progress}%)
-        {:else}
-          Start
-        {/if}
+  <div class="download__wrp">
+    <button
+      class="btn download__btn"
+      class:download__btn_progress={pending}
+      disabled={notReady || pending}
+      type="button"
+      on:click={(initial || finished)
+        ? handleDownloadStart
+        : null}
+    >
+      <span class="btn__wrp">
+        <span class="btn__label">
+          {#if filtering}
+            Filtering already downloaded ({$download.progress}%)
+          {:else if obtaining}
+            Obtaining direct urls ({$download.progress}%)
+          {:else if downloading}
+            Downloading ({$download.progress}%)
+          {:else if finished}
+            Start again
+          {:else}
+            Start
+          {/if}
+        </span>
       </span>
-    </span>
-    {#if pending}
-      <Pending
-        className="download__start-pending"
-        theme="dark"
-      />
-    {/if}
-  </button>
-  <p class="download__message">
-    {#if initial}
-      Press "Start" to initiate download
-    {:else if notReady}
-      Main playlist is empty / stale cookie / no user ID ? no cookie
-    {:else if pending}
-      <span class="download__items">
-        {#each current as trackTitle}
-          <span class="download__item">
-            {trackTitle}
-          </span>
-        {/each}
-      </span>
-    {:else if finished}
-      Downloaded
-      {#if url}
-        <a
-          class="export__link"
-          href={url}
-          download="download-failed-playlist.csv"
-        >
-          But some couldn't.<br>
-          Get <code>.csv</code> file of failed ones
-        </a>
+      {#if pending}
+        <Pending
+          className="download__pending"
+          theme="dark"
+        />
       {/if}
+    </button>
+    <p class="download__message">
+      {#if initial}
+        Press "Start" to initiate download
+      {:else if notReady}
+        Main playlist is empty / stale cookie / no user ID / no cookie
+      {:else if pending}
+        <span class="download__items">
+          {#each current as trackTitle}
+            <span class="download__item">
+              {trackTitle}
+            </span>
+          {/each}
+        </span>
+      {:else if finished}
+        Download finished {$download.finished.length}/{$download.finished.length + $download.failed.length}
+      {/if}
+    </p>
+    {#if finished}
+      <div class="download__actions">
+        {#if url}
+          <a
+            class="btn download__action download__btn"
+            href={url}
+            download="vk-tracks-failed-to-download.csv"
+          >
+            Get .csv file of failed {$download.failed.length} tracks
+          </a>
+        {/if}
+        <button
+          class="btn download__action download__btn"
+          type="button"
+          on:click={handleShowDir}
+        >
+          <span class="btn__wrp">
+            <span class="btn__label">
+              Show directory
+            </span>
+          </span>
+        </button>
+      </div>
     {/if}
-  </p>
+  </div>
 </div>
 
 <style global>
@@ -112,22 +140,26 @@
     flex-grow: 1;
     align-items: center;
     justify-content: center;
+    text-align: center;
     padding: 0 16px 32px;
   }
-  .download__start-btn {
+  .download__wrp {
+    max-width: 80vw;
+  }
+  .download__btn {
     padding: 8px 12px;
     background-color: #ffffff0a;
     transition: background-color 0.15s;
   }
-  .download__start-btn:hover {
+  .download__btn:hover {
     background-color: #ffffff0f;
   }
-  .download__start-btn_progress {
+  .download__btn_progress {
     position: relative;
     opacity: 1;
     pointer-events: none;
   }
-  .download__start-pending {
+  .download__pending {
     position: absolute;
     left: 0;
     top: 0;
@@ -138,21 +170,22 @@
   .download__message {
     margin: 16px 0 0;
     color: #ffffffbe;
-    text-align: center;
   }
   .download__items {}
   .download__item {
     display: block;
-    max-width: 80vw;
+    max-width: 100%;
     overflow: hidden;
     text-overflow: ellipsis;
-    text-align: center;
     white-space: nowrap;
   }
-  .export__link {
-    display: block;
-    color: inherit;
-    text-decoration: underline;
-    line-height: 1.5;
+  .download__actions {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    margin-top: 16px;
+  }
+  .download__action + .download__action {
+    margin-top: 16px;
   }
 </style>
