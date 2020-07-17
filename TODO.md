@@ -1,9 +1,6 @@
 # TODO
 
 ## General
-- add readme
-- make github release
-- make steps with images how to add extension to chrome
 - document all exported helpers/libs with jsDoc
 
 ## Exporting
