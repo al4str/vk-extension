@@ -8,22 +8,12 @@ This extension shows your main playlist tracks. Exports them as `.csv` file (tha
 
 
 ## Screenshots
-![Main Tab](https://i.imgur.com/5a7fz62.png)
-
-Main playlist tab
-
-![Export Tab](https://i.imgur.com/bfBj9vA.png)
-
-Export tab
-
-![Download Tab](https://i.imgur.com/k6nMe2F.png)
-
-Download tab
-
-![Downloaded](https://i.imgur.com/f5DEcw4.png)
-
-Downloaded track with title, performers and cover image
-
+<p align="center">
+  <img width="200" src="https://i.imgur.com/5a7fz62.png" alt="Main playlist tab" />
+  <img width="200" src="https://i.imgur.com/bfBj9vA.png" alt="Export tab" />
+  <img width="200" src="https://i.imgur.com/k6nMe2F.png" alt="Download tab" />
+  <img width="300" src="https://i.imgur.com/f5DEcw4.png" alt="Downloaded track with title, performers and cover image" />
+</p>
 
 ## Usage
 - Download the latest [release](https://github.com/al4str/vk-extension/releases) and unzip it

@@ -8,21 +8,12 @@
 
 
 ## Скриншоты
-![Main Tab](https://i.imgur.com/5a7fz62.png)
-
-Таб аудиозаписей
-
-![Export Tab](https://i.imgur.com/bfBj9vA.png)
-
-Таб экспорта
-
-![Download Tab](https://i.imgur.com/k6nMe2F.png)
-
-Таб скачивания
-
-![Downloaded](https://i.imgur.com/f5DEcw4.png)
-
-Скачанный трек с названием, исполнителем и обложкой
+<p align="center">
+  <img width="200" src="https://i.imgur.com/5a7fz62.png" alt="Таб аудиозаписей" />
+  <img width="200" src="https://i.imgur.com/bfBj9vA.png" alt="Таб экспорта" />
+  <img width="200" src="https://i.imgur.com/k6nMe2F.png" alt="Таб скачивания" />
+  <img width="300" src="https://i.imgur.com/f5DEcw4.png" alt="Скачанный трек с названием, исполнителем и обложкой" />
+</p>
 
 
 ## Использование
