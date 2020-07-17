@@ -2,7 +2,7 @@
 
 [Русский](https://github.com/al4str/vk-extension/blob/master/README.RU.md)
 
-![VK Extension screenshot](https://i.imgur.com/gkJSwOo.png)
+![VK Extension screenshot](https://i.imgur.com/FkTD8du.png)
 
 This extension shows your main playlist tracks. Exports them as `.csv` file (that can be imported into app like [TuneMyMusic](https://www.tunemymusic.com/) for moving to Spotify, Deezer, Youtube Music, Apple Music, etc.) Tries its best to export them right into your device with ID3 tags applied.
 
